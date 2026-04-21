@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fash</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- SVG noise filter -->
+  <svg style="position:absolute;width:0;height:0">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </svg>
+
+  <main class="stage">
+
+    <!-- Slow Dance panel -->
+    <div class="panel panel--slow-dance"
+         id="panelSlowDance"
+         role="button"
+         tabindex="0"
+         aria-label="Play Slow Dance">
+      <canvas class="panel__canvas" id="canvasSlowDance"></canvas>
+      <div class="panel__bloom"></div>
+      <div class="panel__grain"></div>
+      <div class="panel__content">
+        <h2 class="panel__title">Slow Dance</h2>
+        <div class="panel__glyph"></div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- Passenger Side panel -->
+    <div class="panel panel--passenger-side"
+         id="panelPassengerSide"
+         role="button"
+         tabindex="0"
+         aria-label="Play Passenger Side">
+      <canvas class="panel__canvas" id="canvasPassengerSide"></canvas>
+      <div class="panel__streak streak-1"></div>
+      <div class="panel__sheen"></div>
+      <div class="panel__content">
+        <h2 class="panel__title">Passenger Side</h2>
+        <div class="panel__glyph"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Audio elements -->
+  <audio id="audioSlowDance" preload="metadata" src="audio/Fash - Slow Dance.mp3"></audio>
+  <audio id="audioPassengerSide" preload="metadata" src="audio/Fash - Passenger Side.mp3"></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>

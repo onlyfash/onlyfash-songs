@@ -1,0 +1,1323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>onlyfash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --mono:"JetBrains Mono", ui-monospace, monospace;
+    --ink:#ebe7dc;
+    --paper:#0a0a0c;
+    --dim:#7a7670;
+    --faint:#3a3731;
+    --hot:#e96a4a;
+    --slow-a:#2a0e36;
+    --slow-b:#070309;
+    --slow-hi:#b078d8;
+    --slow-teal:#1a4a52;
+    --pass-a:#cfd6de;
+    --pass-b:#6a7581;
+    --pass-ink:#0e1216;
+    --pass-hi:#e8f0f8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:var(--mono);overscroll-behavior:none}
+  body{overflow:hidden}
+
+  /* ========= stage ========= */
+  .stage{position:fixed;inset:0;background:var(--paper);overflow:hidden}
+  .stage::before{
+    /* warm vignette */
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:
+      radial-gradient(140% 100% at 50% 50%, transparent 40%, rgba(0,0,0,.55) 100%),
+      radial-gradient(60% 40% at 50% 8%, rgba(80,60,40,.08), transparent 60%),
+      radial-gradient(60% 40% at 50% 92%, rgba(50,60,80,.08), transparent 60%);
+  }
+  /* paper/film grain (animated) */
+  .grain{
+    position:absolute;inset:-10%;z-index:30;pointer-events:none;mix-blend-mode:overlay;opacity:.25;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.9 0 0 0 0 0.9 0 0 0 0 0.9 0 0 0 0.7 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-size:220px 220px;
+    animation:grain 1690ms steps(6) infinite;
+  }
+  @keyframes grain{
+    0%{transform:translate(0,0)}
+    16%{transform:translate(-3%, 2%)}
+    33%{transform:translate(2%, -3%)}
+    50%{transform:translate(-2%, -2%)}
+    66%{transform:translate(3%, 1%)}
+    83%{transform:translate(-1%, 3%)}
+    100%{transform:translate(0,0)}
+  }
+
+  /* ========= chrome ========= */
+  .chrome{position:absolute;inset:0;z-index:20;pointer-events:none;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
+  .chrome > *{position:absolute}
+  .chr-tl{top:22px;left:24px}
+  .chr-tr{top:22px;right:24px;text-align:right}
+  .chr-bl{bottom:22px;left:24px}
+  .chr-br{bottom:22px;right:24px;text-align:right}
+  .blink{display:inline-block;width:7px;height:7px;background:var(--hot);border-radius:50%;vertical-align:middle;margin-right:8px;animation:pulseDot 2.2s infinite}
+  @keyframes pulseDot{0%,100%{opacity:.35}50%{opacity:1}}
+
+  /* ========= selector ========= */
+  .selector{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(28px,5vh,60px);transition:none}
+  .selector.gone{opacity:0;pointer-events:none}
+
+  .portal-wrap{position:relative;cursor:pointer;isolation:isolate}
+  .portal{
+    position:relative;width:clamp(200px, 28vmin, 340px);aspect-ratio:1;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    transition: transform .9s cubic-bezier(.2,.7,.2,1), filter .45s ease, opacity .45s ease;
+    will-change:transform, filter;
+  }
+  .portal .surface{
+    position:absolute;inset:0;border-radius:50%;overflow:hidden;
+  }
+  .portal .edge{
+    position:absolute;inset:0;border-radius:50%;border:1px solid rgba(255,255,255,.08);pointer-events:none;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.6) inset,
+      0 0 60px rgba(0,0,0,.6);
+  }
+  .portal .halo{
+    position:absolute;inset:-22%;border-radius:50%;pointer-events:none;
+    filter:blur(22px);opacity:0;transition:opacity .6s ease;
+  }
+  .portal-wrap:hover .halo{opacity:.9}
+  .portal-wrap .lens{
+    /* inner lens highlight */
+    position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 38% 30%, rgba(255,255,255,.18), transparent 40%);
+    mix-blend-mode:screen;opacity:.7;
+  }
+  .portal canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;display:block}
+
+  /* portal label */
+  .label{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    text-align:center;pointer-events:none;
+    font-family:var(--mono);font-weight:400;
+    mix-blend-mode:screen;
+    transition:opacity .4s ease, letter-spacing .6s ease;
+  }
+  .label .name{display:block;font-size:clamp(13px,1.4vw,16px);letter-spacing:.22em;text-transform:lowercase;font-weight:400}
+  .label .name .caret{display:inline-block;margin-left:2px;opacity:.65;animation:caret 1s steps(1) infinite}
+  .label .rt{display:block;font-size:9px;letter-spacing:.42em;opacity:.35;margin-top:10px;text-transform:uppercase}
+  .portal-wrap:hover .label .rt{opacity:.85}
+  .portal-wrap:hover .label .name{letter-spacing:.32em}
+  @keyframes caret{0%,49%{opacity:.65}50%,100%{opacity:0}}
+
+  /* ========= axis / crosshair ========= */
+  .axis{
+    position:relative;width:min(520px, 72vw);display:flex;align-items:center;justify-content:center;
+    color:var(--dim);user-select:none;gap:18px;
+  }
+  .axis .line{flex:1;height:1px;background:linear-gradient(to right, transparent, var(--faint) 20%, var(--faint) 80%, transparent)}
+  .axis .center{
+    position:relative;display:flex;align-items:center;justify-content:center;
+  }
+  .axis .center .word{
+    font-family:var(--mono);font-size:clamp(11px,1.1vw,13px);letter-spacing:.34em;text-transform:lowercase;color:var(--ink);
+    padding:0 4px;
+    position:relative;
+  }
+  .axis .center .word::before{
+    content:"[";margin-right:10px;color:var(--dim);
+  }
+  .axis .center .word::after{
+    content:"]";margin-left:10px;color:var(--dim);
+  }
+
+  /* hover state is JS-driven (animateHomeTo) — no data-hover attribute is set anymore */
+
+  /* ========= swallow transition ========= */
+  .selector.swallow .portal-wrap:not(.active) .portal{opacity:0;filter:blur(10px) brightness(.3);transform:scale(.85)}
+  .selector.swallow .portal-wrap:not(.active){transition:opacity .4s}
+  .selector.swallow .portal-wrap.active .portal{transform:scale(14);transition:transform 1.3s cubic-bezier(.7,0,.3,1), filter 1.3s}
+  .selector.swallow .axis{opacity:0;transition:opacity .25s}
+  .selector.swallow .chr-tr .cursor-label{opacity:0}
+
+  /* ========= WORLD ========= */
+  .world{position:absolute;inset:0;z-index:5;opacity:0;pointer-events:none;transition:opacity .9s ease}
+  .world.live{opacity:1;pointer-events:auto}
+  .world canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* BACK button — clear, tappable */
+  .back-btn{
+    position:absolute;top:22px;left:22px;z-index:40;
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:#fff;background:rgba(0,0,0,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.22);border-radius:999px;
+    padding:10px 16px 10px 12px;cursor:pointer;
+    opacity:0;transform:translateX(-6px);
+    transition:opacity .6s ease .7s, transform .6s ease .7s, background .2s, border-color .2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .back-btn svg{width:16px;height:16px;display:block}
+  .back-btn:hover{background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.4)}
+  @media (max-width: 640px){
+    .back-btn{top:14px;left:14px;font-size:10.5px;padding:11px 16px 11px 12px}
+    .back-btn svg{width:17px;height:17px}
+  }
+
+  /* audio-gate (plays on first click anyway, but keep a quiet hint) */
+  .hint{
+    position:absolute;left:50%;bottom:58px;transform:translateX(-50%);z-index:15;
+    font-size:9.5px;letter-spacing:.36em;text-transform:uppercase;color:var(--dim);
+    opacity:0;animation:hint 6s ease 1.2s forwards;pointer-events:none;
+  }
+  @keyframes hint{0%{opacity:0}20%{opacity:.8}80%{opacity:.8}100%{opacity:0}}
+
+  /* cursor crosshair readout */
+  .cursor-label{display:flex;flex-direction:column;align-items:flex-end;gap:3px;transition:opacity .3s}
+
+  /* tweaks */
+  .tweaks-btn{
+    position:fixed;right:18px;bottom:18px;z-index:60;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:var(--ink);border:1px solid rgba(255,255,255,.15);
+    font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
+    padding:8px 12px;cursor:pointer;border-radius:999px;display:none;align-items:center;gap:8px;
+  }
+  .tweaks-btn.on{display:flex}
+  .tweaks-btn .sq{width:6px;height:6px;background:var(--hot);display:inline-block;border-radius:50%}
+  .tweaks-panel{
+    position:fixed;right:18px;bottom:18px;z-index:60;display:none;width:280px;
+    background:rgba(10,10,12,.82);backdrop-filter:blur(12px);color:var(--ink);
+    border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:14px 16px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  }
+  .tweaks-panel.open{display:block}
+  .tweaks-panel h5{margin:0 0 10px;font-size:10px;letter-spacing:.3em;display:flex;justify-content:space-between;align-items:center;color:var(--dim)}
+  .tweaks-panel h5 button{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--ink);font-family:var(--mono);font-size:9px;letter-spacing:.22em;padding:3px 8px;border-radius:999px;cursor:pointer}
+  .tw-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0;color:var(--dim)}
+  .tw-row input[type=range]{accent-color:var(--hot);width:130px}
+  .tw-row .val{color:var(--ink);font-variant-numeric:tabular-nums}
+  .tw-row input[type=text]{background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.15);color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;width:160px;outline:none}
+  .tw-tog{appearance:none;width:30px;height:16px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);position:relative;cursor:pointer}
+  .tw-tog::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;background:var(--ink);transition:left .15s}
+  .tw-tog:checked{background:var(--hot)}
+  .tw-tog:checked::after{left:15px;background:#fff}
+
+  /* counting-in scanline on enter */
+  .scanline{position:absolute;inset:0;z-index:35;pointer-events:none;opacity:0}
+  .scanline::before{
+    content:"";position:absolute;left:-10%;right:-10%;top:0;height:2px;background:rgba(255,255,255,.45);box-shadow:0 0 30px rgba(255,255,255,.5);
+  }
+  .selector.swallow ~ .scanline{
+    opacity:1;animation:scan .9s cubic-bezier(.7,0,.3,1) .15s forwards;
+  }
+  @keyframes scan{
+    0%{opacity:0;transform:translateY(0)}
+    10%{opacity:1}
+    100%{opacity:0;transform:translateY(100vh)}
+  }
+
+  /* ========= MINIMAL SELECTOR OVERRIDE ========= */
+  body{background:#fff}
+  .stage{background:#fff}
+  .chrome{display:none}
+  .hint{display:none}
+  .axis{transition:none}
+  .axis .line{background:linear-gradient(to right, transparent, #000 20%, #000 80%, transparent);opacity:.15}
+  .axis .center .word{color:#000}
+  .axis .center .word::before,.axis .center .word::after{color:#000;opacity:.35}
+  .portal .halo,.portal .lens,.portal .edge,.portal canvas{display:none}
+  .portal-wrap .portal{background:#000;border-radius:50%;will-change:transform,opacity}
+  .portal-wrap{transition:none}
+  .portal-wrap .label{color:#000 !important;mix-blend-mode:normal;transition:opacity .3s ease}
+  .portal-wrap .label .name{color:#000}
+  .portal-wrap .label .rt{color:#000;opacity:.45}
+  .portal-wrap:hover .label .rt{opacity:.9}
+
+  /* HOVER is JS-driven — no CSS rules needed. Same for breathing (JS sets transform inline). */
+
+  /* SWALLOW: non-active dot and axis fade out; active dot stays in place.
+     Circular reveal is handled by clip-path on the world div (see JS). */
+  .selector.swallow .portal-wrap:not(.active){opacity:0;transition:opacity .3s ease}
+  .selector.swallow .axis{opacity:0;transition:opacity .25s ease}
+
+  /* WORLD wrapper reveals via clip-path animation (see JS); opacity switches immediately */
+  .world{background:#000;opacity:0;pointer-events:none;transition:none}
+  .world.live{opacity:1;pointer-events:auto;transition:none}
+
+  /* BACK button — JS controls opacity; CSS handles hover color only */
+  .back-btn{
+    position:absolute;top:22px;left:22px;z-index:60;
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:#fff;background:transparent;border:1px solid rgba(255,255,255,.35);border-radius:999px;
+    padding:10px 14px;cursor:pointer;
+    opacity:0;pointer-events:none;
+    transition:border-color 400ms ease, background 400ms ease;
+    -webkit-tap-highlight-color:transparent;
+    transform:none !important;
+  }
+  .back-btn:hover{background:rgba(255,255,255,.08);border-color:#fff}
+  .back-btn.interactive{pointer-events:auto}
+  @media (max-width:640px){
+    .back-btn{top:14px;left:14px;font-size:10.5px;padding:11px 14px}
+  }
+
+  /* scanline off */
+  .scanline{display:none !important}
+
+  /* mobile: ensure dots are tap-sized */
+  @media (max-width:640px){
+    .portal{width:clamp(160px, 38vmin, 220px) !important}
+  }
+
+  /* Labels outside the dots */
+  .portal-wrap{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .portal-wrap.slow{flex-direction:column-reverse}
+  .portal-wrap .label{position:static;transform:none;text-align:center;pointer-events:none}
+  .portal-wrap .label .name{font-size:clamp(12px,1.3vw,14px);letter-spacing:.28em}
+  .portal-wrap .label .rt{margin-top:6px;font-size:8.5px;letter-spacing:.42em}
+
+  /* Hide tweaks UI entirely */
+  .tweaks-btn,.tweaks-panel{display:none !important}
+
+  /* mobile-only message / desktop-lock */
+  .mobile-only{display:none}
+  @media (max-width:768px){
+    #axisWord{display:none}
+    .mobile-only{display:inline}
+    .portal-wrap{pointer-events:none !important}
+  }
+
+
+  /* Labels outside dots via absolute positioning */
+  .portal-wrap{display:block}
+  .portal-wrap.slow{flex-direction:initial}
+  .portal-wrap .portal{position:relative}
+  .portal-wrap .label{
+    position:absolute;left:50%;transform:translateX(-50%);
+    text-align:center;pointer-events:none;
+    color:#000 !important;mix-blend-mode:normal;
+    white-space:nowrap;
+  }
+  .portal-wrap.slow .label{top:calc(100% + 22px)}
+  .portal-wrap.pass .label{bottom:calc(100% + 22px)}
+  .portal-wrap .label .name{display:block;font-size:clamp(12px,1.3vw,14px);letter-spacing:.28em;color:#000}
+  .portal-wrap .label .rt{display:block;margin-top:6px;font-size:8.5px;letter-spacing:.42em;color:#000;opacity:.45}
+  .portal-wrap:hover .label .rt{opacity:.9}
+
+
+  /* Clear inherited top on pass label so bottom positions correctly */
+  .portal-wrap.pass .label{top:auto !important;transform:translateX(-50%) !important}
+  .portal-wrap.slow .label{bottom:auto !important;transform:translateX(-50%) !important}
+
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- SELECTOR -->
+  <div class="selector" id="selector">
+
+    <!-- SLOW DANCE portal (top) -->
+    <div class="portal-wrap slow" data-song="slow" id="wrapSlow">
+      <div class="portal">
+        <div class="halo" id="haloSlow"></div>
+        <div class="surface">
+          <canvas id="cvsSlow" width="720" height="720"></canvas>
+        </div>
+        <div class="lens"></div>
+        <div class="edge"></div>
+      </div>
+    </div>
+
+    <!-- AXIS -->
+    <div class="axis" id="axis" aria-hidden="true">
+      <span class="line"></span>
+      <div class="center" id="axisCenter">
+        <span class="word" id="axisWord">pick a side</span>
+        <span class="word mobile-only">this is a desktop experience</span>
+      </div>
+      <span class="line"></span>
+    </div>
+
+    <!-- PASSENGER SIDE portal (bottom) -->
+    <div class="portal-wrap pass" data-song="pass" id="wrapPass">
+      <div class="portal">
+        <div class="halo" id="haloPass"></div>
+        <div class="surface">
+          <canvas id="cvsPass" width="720" height="720"></canvas>
+        </div>
+        <div class="lens"></div>
+        <div class="edge"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- chrome -->
+  <div class="chrome"></div>
+
+  <!-- WORLD layers -->
+  <div class="world slow" id="worldSlow">
+    <canvas id="worldSlowCvs"></canvas>
+    <button class="back-btn" data-close aria-label="back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>back</span>
+    </button>
+  </div>
+  <div class="world pass" id="worldPass">
+    <canvas id="worldPassCvs"></canvas>
+    <button class="back-btn" data-close aria-label="back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>back</span>
+    </button>
+  </div>
+
+  <!-- scanline accent on commit -->
+  <div class="scanline" id="scanline"></div>
+</div>
+
+<!-- tweaks -->
+<button class="tweaks-btn on" id="tweaksBtn"><span class="sq"></span>tweaks</button>
+<div class="tweaks-panel" id="tweaksPanel">
+  <h5>TWEAKS <button id="tweaksClose">close</button></h5>
+  <div class="tw-row"><span>grain</span><input type="range" min="0" max="100" value="45" id="tGrain"/><span class="val" id="vGrain">45</span></div>
+  <div class="tw-row"><span>breath</span><input type="range" min="0" max="100" value="55" id="tBreath"/><span class="val" id="vBreath">55</span></div>
+  <div class="tw-row"><span>bloom</span><input type="range" min="0" max="100" value="60" id="tBloom"/><span class="val" id="vBloom">60</span></div>
+  <div class="tw-row"><span>audio</span><input type="checkbox" class="tw-tog" id="tAudio" checked/></div>
+  <div class="tw-row"><span>axis copy</span><input type="text" id="tAxis" value="pick a side"/></div>
+</div>
+
+<script>
+/* =====================================================================
+ *  onlyfash — hi-fi selector (Direction A)
+ *  Two circular portals, filmic grain, breathing, audio-reactive worlds.
+ *  Audio is synthesized via WebAudio so there's no asset dependency.
+ * =====================================================================*/
+
+/* ---------- state & refs ---------- */
+const TWEAKS = /*EDITMODE-BEGIN*/{
+  "grain": 100,
+  "breath": 100,
+  "bloom": 100,
+  "audio": true,
+  "axisCopy": "pick a side"
+}/*EDITMODE-END*/;
+
+const sel = document.getElementById('selector');
+const wrapSlow = document.getElementById('wrapSlow');
+const wrapPass = document.getElementById('wrapPass');
+const haloSlow = document.getElementById('haloSlow');
+const haloPass = document.getElementById('haloPass');
+const worldSlow = document.getElementById('worldSlow');
+const worldPass = document.getElementById('worldPass');
+const axisCenter = document.getElementById('axisCenter');
+const axisWord = axisCenter.querySelector('.word');
+
+let active = null; // 'slow' | 'pass' | null
+let dotCenter = { x: 0, y: 0 };
+let audioCtx = null, master = null, analyser = null, freqData = null, timeData = null;
+let slowEl = null, passEl = null, slowSrc = null, passSrc = null;
+let slowGain = null, passGain = null;
+
+/* inject hidden <audio> elements */
+(function(){
+  const slowUrl = 'audio/Fash - Slow Dance.mp3';
+  const passUrl = 'audio/Fash - Passenger Side.mp3';
+
+  slowEl = document.createElement('audio');
+  slowEl.src = slowUrl;
+  slowEl.loop = true; slowEl.preload = 'auto';
+  slowEl.setAttribute('playsinline',''); slowEl.setAttribute('webkit-playsinline','');
+  slowEl.playsInline = true;
+  passEl = document.createElement('audio');
+  passEl.src = passUrl;
+  passEl.loop = true; passEl.preload = 'auto';
+  passEl.setAttribute('playsinline',''); passEl.setAttribute('webkit-playsinline','');
+  passEl.playsInline = true;
+  document.body.appendChild(slowEl); document.body.appendChild(passEl);
+})();
+
+/* Unlock audio on FIRST user interaction — iOS/Safari requires this */
+let audioUnlocked = false;
+function unlockAudio(){
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  [slowEl, passEl].forEach(el => {
+    try {
+      el.muted = true;
+      const p = el.play();
+      if (p && p.then) {
+        p.then(() => { try{ el.pause(); el.currentTime = 0; }catch(e){} el.muted = false; })
+         .catch(() => { el.muted = false; });
+      } else {
+        try{ el.pause(); el.currentTime = 0; }catch(e){}
+        el.muted = false;
+      }
+    } catch(e){}
+  });
+  // also resume audio context on gesture
+  if (audioCtx && audioCtx.state === 'suspended') { try { audioCtx.resume(); } catch(e){} }
+}
+['pointerdown','touchstart','mousedown','keydown'].forEach(ev => {
+  window.addEventListener(ev, unlockAudio, { passive: true });
+});
+
+/* ---------- portal canvases (oil slick / graphite) ---------- */
+function makePortalRenderer(canvas, kind){
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height, R = W/2;
+  let t = 0;
+  function draw(){
+    t += 1/60;
+    // base wash
+    if (kind === 'slow'){
+      const g = ctx.createRadialGradient(R*.9, R*.75, R*.05, R, R, R);
+      g.addColorStop(0, '#4a1e5e');
+      g.addColorStop(.25, '#2a0e36');
+      g.addColorStop(.55, '#1a0720');
+      g.addColorStop(1, '#050208');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+      // teal bruise
+      const g2 = ctx.createRadialGradient(R*.4 + Math.sin(t*.3)*40, R*1.1 + Math.cos(t*.24)*30, 10, R*.4, R*1.1, R*.9);
+      g2.addColorStop(0, 'rgba(26,96,104,.55)');
+      g2.addColorStop(1, 'rgba(26,96,104,0)');
+      ctx.fillStyle = g2;
+      ctx.fillRect(0,0,W,H);
+      // ripple bands
+      ctx.globalCompositeOperation = 'screen';
+      for (let i=0;i<5;i++){
+        const ph = t*.5 + i*0.7;
+        const cx = R + Math.cos(ph)*R*.15;
+        const cy = R + Math.sin(ph*1.3)*R*.18;
+        const rg = ctx.createRadialGradient(cx, cy, R*.0, cx, cy, R*(.35+.1*Math.sin(ph*1.7)));
+        const a = (0.12 + 0.08*Math.sin(ph*2));
+        rg.addColorStop(0, `rgba(176,120,216,${a})`);
+        rg.addColorStop(1, 'rgba(176,120,216,0)');
+        ctx.fillStyle = rg;
+        ctx.fillRect(0,0,W,H);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    } else {
+      const g = ctx.createRadialGradient(R*.35, R*.3, R*.05, R, R, R);
+      g.addColorStop(0, '#e8eef6');
+      g.addColorStop(.25, '#b8c2ce');
+      g.addColorStop(.55, '#6e7a88');
+      g.addColorStop(1, '#2a313a');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+      // cold streaks
+      ctx.globalCompositeOperation = 'screen';
+      for (let i=0;i<4;i++){
+        const ph = t*.4 + i*0.9;
+        const y = R + Math.sin(ph*.7)*R*.4;
+        const grad = ctx.createLinearGradient(0, y-18, 0, y+18);
+        grad.addColorStop(0, 'rgba(255,255,255,0)');
+        grad.addColorStop(.5, `rgba(240,245,255,${0.18 + 0.08*Math.sin(ph*1.5)})`);
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y-20, W, 40);
+      }
+      ctx.globalCompositeOperation = 'multiply';
+      // soft shadow pool
+      const sg = ctx.createRadialGradient(R*.7, R*1.1, 5, R*.7, R*1.1, R*.9);
+      sg.addColorStop(0, 'rgba(20,30,45,.4)');
+      sg.addColorStop(1, 'rgba(20,30,45,0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(0,0,W,H);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // grain overlay on portal
+    const grainAmt = TWEAKS.grain/100;
+    if (grainAmt > 0){
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.globalAlpha = 0.18 * grainAmt;
+      // cheap stipple
+      const density = 140;
+      for (let i=0;i<density;i++){
+        const x = Math.random()*W, y = Math.random()*H;
+        ctx.fillStyle = Math.random() > .5 ? '#fff' : '#000';
+        ctx.fillRect(x, y, 1.4, 1.4);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+makePortalRenderer(document.getElementById('cvsSlow'),'slow');
+makePortalRenderer(document.getElementById('cvsPass'),'pass');
+
+/* ---------- halos ---------- */
+function setHalos(){
+  const bloom = TWEAKS.bloom/100;
+  haloSlow.style.background = `radial-gradient(circle, rgba(176,120,216,${.35*bloom}) 0%, rgba(74,30,94,${.2*bloom}) 40%, transparent 70%)`;
+  haloPass.style.background = `radial-gradient(circle, rgba(220,232,248,${.35*bloom}) 0%, rgba(110,130,160,${.2*bloom}) 40%, transparent 70%)`;
+}
+setHalos();
+
+/* ---------- breathing ----------
+ * Custom curve with brief holds at both extremes — the pause is what reads as alive.
+ * Amplitude 2% scale. Periods 5.8s / 4.3s (asymmetric).
+ * Paused during hover and during any sequence.
+ */
+const t0 = performance.now();
+function breathCurve(t){
+  // t ∈ [0,1) — one cycle. Shape: rest → inhale → hold → exhale → hold.
+  // 0..0.08 rest, 0.08..0.42 inhale (smoothstep), 0.42..0.54 hold at 1,
+  // 0.54..0.92 exhale (smoothstep), 0.92..1 rest.
+  if (t < 0.08) return 0;
+  if (t < 0.42){ const p = (t - 0.08) / 0.34; return p*p*(3 - 2*p); }
+  if (t < 0.54) return 1;
+  if (t < 0.92){ const p = (t - 0.54) / 0.38; return 1 - p*p*(3 - 2*p); }
+  return 0;
+}
+function breathe(){
+  const amt = TWEAKS.breath/100 * 0.02; // 2% ceiling
+  const ts = (performance.now() - t0) / 1000;
+  const s1 = 1 + amt * breathCurve(((ts      ) / 5.8) % 1);
+  const s2 = 1 + amt * breathCurve(((ts + 1.3) / 4.3) % 1);
+  const pSlow = wrapSlow.querySelector('.portal');
+  const pPass = wrapPass.querySelector('.portal');
+  // Pause scaling during hover or during any sequence; opacity work stays pure.
+  if (!active && !hoverTarget){
+    pSlow.style.transform = `scale(${s1.toFixed(4)})`;
+    pPass.style.transform = `scale(${s2.toFixed(4)})`;
+  } else if (hoverTarget && !active){
+    // Neutral — no breathing during hover.
+    pSlow.style.transform = 'scale(1)';
+    pPass.style.transform = 'scale(1)';
+  }
+  requestAnimationFrame(breathe);
+}
+/* breathing kickoff happens after hoverTarget is declared below (first frame reads it) */
+
+/* ---------- motion vocabulary ----------
+ * One curve for directional transitions — cubic-bezier(.65, 0, .1, 1).
+ * Slow in, slow out. Inevitable, not snappy.
+ */
+function makeCubicBezier(x1, y1, x2, y2){
+  const cx = 3*x1, bx = 3*(x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3*y1, by = 3*(y2 - y1) - cy, ay = 1 - cy - by;
+  const sampleX = t => ((ax*t + bx)*t + cx)*t;
+  const sampleY = t => ((ay*t + by)*t + cy)*t;
+  const dX      = t => (3*ax*t + 2*bx)*t + cx;
+  return function(t){
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    let u = t;
+    for (let i=0;i<8;i++){
+      const xu = sampleX(u) - t;
+      if (Math.abs(xu) < 1e-6) break;
+      const d = dX(u);
+      if (Math.abs(d) < 1e-6) break;
+      u -= xu / d;
+    }
+    return sampleY(u);
+  };
+}
+// PRIMARY — directional motion (circle, line extend/contract, sequence stages).
+// Slower accel head, longer deceleration tail. Motion resists, builds, settles.
+const primaryEase    = makeCubicBezier(.7, 0, .15, 1);
+const primaryEaseCSS = 'cubic-bezier(.7,0,.15,1)';
+// IDLE — hovers, home-screen returns, back-button, opacity transitions.
+// Landing, not stopping.
+const idleEase       = makeCubicBezier(.8, 0, .2, 1);
+const idleEaseCSS    = 'cubic-bezier(.8,0,.2,1)';
+const easeOut        = p => 1 - Math.pow(1 - p, 3);
+const easeIn         = p => p*p*p;
+const linear         = p => p;
+
+/* ---------- home-state (shared between hover fade and exit-return fade) ----------
+ * One animation function for both directions. Same vocabulary. Mid-flight reversals smooth.
+ */
+const homeState = { slowOp: 1, passOp: 1, axisOp: 1, axisLS: 0.34 };
+let homeFadeRAF = null;
+function applyHomeState(){
+  wrapSlow.style.opacity = homeState.slowOp;
+  wrapPass.style.opacity = homeState.passOp;
+  axisEl.style.opacity   = homeState.axisOp;
+  axisWord.style.letterSpacing = homeState.axisLS.toFixed(4) + 'em';
+}
+function animateHomeTo(targets, opts){
+  opts = opts || {};
+  if (homeFadeRAF){ cancelAnimationFrame(homeFadeRAF); homeFadeRAF = null; }
+  const start = performance.now();
+  const from  = {
+    slowOp: homeState.slowOp, passOp: homeState.passOp,
+    axisOp: homeState.axisOp, axisLS: homeState.axisLS
+  };
+  const ease    = opts.ease    || idleEase;
+  const dur     = opts.duration || 630;
+  const delay   = opts.delay    || { slowOp: 0, passOp: 0, axisOp: 0, axisLS: 0 };
+  const durs    = opts.durations || { slowOp: dur, passOp: dur, axisOp: dur, axisLS: dur };
+  (function frame(now){
+    const t = now - start;
+    let live = false;
+    for (const key of ['slowOp','passOp','axisOp','axisLS']){
+      if (targets[key] === undefined) continue;
+      const rawP = (t - (delay[key] || 0)) / (durs[key] || dur);
+      const p = Math.max(0, Math.min(1, rawP));
+      const e = ease(p);
+      homeState[key] = from[key] + (targets[key] - from[key]) * e;
+      if (rawP < 1) live = true;
+    }
+    applyHomeState();
+    if (live) homeFadeRAF = requestAnimationFrame(frame);
+    else homeFadeRAF = null;
+  })(performance.now());
+}
+
+/* ---------- hover ----------
+ * Single state variable; transitions lerp from current homeState (not from 0).
+ * When the mouse moves directly between dots, we skip the full home-restore fade —
+ * we just transition hoveredDot, which reverses the in-flight opacity from where it is.
+ * No moment where the screen is empty of both dots.
+ */
+let hoveredDot = null; // 'slow' | 'pass' | null — 'slow' is top, 'pass' is bottom
+const axisEl = document.getElementById('axis');
+
+// Back-compat alias for any surviving references.
+let hoverTarget = null;
+
+function dotUnderElement(node){
+  if (!node || typeof node.nodeType !== 'number') return null;
+  if (wrapSlow.contains(node)) return 'slow';
+  if (wrapPass.contains(node)) return 'pass';
+  return null;
+}
+
+function setHover(next){
+  if (active) return;
+  if (next === hoveredDot) return;
+  hoveredDot = next;
+  hoverTarget = next; // alias
+
+  if (next === null){
+    // Full return — staggered, same vocabulary as exit's home-restoration.
+    animateHomeTo(
+      { slowOp: 1, passOp: 1, axisOp: 1, axisLS: 0.34 },
+      {
+        ease: idleEase,
+        durations: { slowOp: 560, passOp: 560, axisOp: 700, axisLS: 700 },
+        delay:     { slowOp: 140, passOp: 140, axisOp: 0,   axisLS: 0   }
+      }
+    );
+  } else {
+    // Single directional transition. The "other" dot goes to 0, the hovered dot to 1.
+    // animateHomeTo lerps from current homeState, so if a dot is mid-fade, it reverses smoothly.
+    const t = { axisOp: 0, axisLS: 0.30 };
+    if (next === 'slow'){ t.slowOp = 1; t.passOp = 0; }
+    else                { t.passOp = 1; t.slowOp = 0; }
+    animateHomeTo(t, { ease: idleEase, duration: 630 });
+  }
+}
+
+/* ---------- timeline sequencer ----------
+ * One RAF loop drives all stages. No nested setTimeouts. No race conditions.
+ */
+let currentTimeline = null;
+function runTimeline(stages, onComplete){
+  if (currentTimeline) currentTimeline.cancelled = true;
+  const tl = currentTimeline = { raf: 0, cancelled: false };
+  const started = new Set(), finished = new Set();
+  const total = stages.reduce((m, s) => Math.max(m, s.start + s.duration), 0);
+  const originTime = performance.now();
+  (function frame(now){
+    if (tl.cancelled) return;
+    const t = now - originTime;
+    for (const s of stages){
+      const rawP = (t - s.start) / s.duration;
+      if (rawP >= 0 && !started.has(s)){
+        started.add(s);
+        if (s.onStart) s.onStart();
+      }
+      if (rawP >= 0 && rawP <= 1){
+        const p = Math.min(1, Math.max(0, rawP));
+        const e = s.ease ? s.ease(p) : p;
+        if (s.fn) s.fn(e);
+      } else if (rawP > 1 && !finished.has(s)){
+        finished.add(s);
+        if (s.fn) s.fn(1);
+        if (s.onEnd) s.onEnd();
+      }
+    }
+    if (t < total + 50){
+      tl.raf = requestAnimationFrame(frame);
+    } else {
+      currentTimeline = null;
+      if (onComplete) onComplete();
+    }
+  })(performance.now());
+  return tl;
+}
+
+/* ---------- audio ---------- */
+let audioRouted = false;
+function initAudio(){
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch(e){ console.warn('no audio ctx', e); return; }
+  master = audioCtx.createGain();
+  master.gain.value = 1.0;
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.82;
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+  timeData = new Uint8Array(analyser.fftSize);
+  master.connect(analyser);
+  analyser.connect(audioCtx.destination);
+
+  try {
+    slowSrc = audioCtx.createMediaElementSource(slowEl);
+    passSrc = audioCtx.createMediaElementSource(passEl);
+    slowGain = audioCtx.createGain(); slowGain.gain.value = 0;
+    passGain = audioCtx.createGain(); passGain.gain.value = 0;
+    slowSrc.connect(slowGain).connect(master);
+    passSrc.connect(passGain).connect(master);
+    audioRouted = true;
+  } catch(e){
+    // createMediaElementSource can only be called once per element
+    // If it fails we fall back to plain <audio> playback w/out FFT
+    console.warn('audio routing fallback', e);
+    audioRouted = false;
+  }
+}
+
+function fadeGain(node, to, time=1.2){
+  if (!node || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    node.gain.cancelScheduledValues(now);
+    node.gain.setValueAtTime(node.gain.value, now);
+    node.gain.linearRampToValueAtTime(to, now + time);
+  } catch(e){}
+}
+
+function fadeVolume(el, to, time=1.0){
+  // fade the <audio>.volume for fallback mode
+  const from = el.volume;
+  const start = performance.now();
+  function step(){
+    const p = Math.min(1, (performance.now()-start)/(time*1000));
+    el.volume = from + (to - from)*p;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  step();
+}
+
+/* Play a real MP3 — MUST be called synchronously from a user gesture */
+function playTrack(kind){
+  const target = kind === 'slow' ? slowEl : passEl;
+  const other  = kind === 'slow' ? passEl : slowEl;
+
+  // stop the other first
+  try { other.pause(); } catch(e){}
+
+  // sync gesture play
+  target.currentTime = 0;
+  if (audioRouted){
+    target.volume = 1;
+  } else {
+    target.volume = 0; // we'll fade
+  }
+  const p = target.play();
+  if (p && p.catch){
+    p.catch(err => console.warn('play failed', err));
+  }
+
+  if (audioRouted){
+    if (kind==='slow'){
+      fadeGain(passGain, 0, 0.3);
+      fadeGain(slowGain, 1.0, 1.2);
+    } else {
+      fadeGain(slowGain, 0, 0.3);
+      fadeGain(passGain, 1.0, 1.2);
+    }
+  } else {
+    // fallback: fade element volume
+    fadeVolume(target, 1, 1.2);
+  }
+}
+
+function stopAllTracks(){
+  try { slowEl.pause(); } catch(e){}
+  try { passEl.pause(); } catch(e){}
+  if (audioRouted){
+    if (slowGain) fadeGain(slowGain, 0, 0.4);
+    if (passGain) fadeGain(passGain, 0, 0.4);
+  }
+}
+
+/* ---------- worlds: canvas visualizers (audio-reactive) ---------- */
+function runWorld(kind){
+  const canvas = kind==='slow' ? document.getElementById('worldSlowCvs') : document.getElementById('worldPassCvs');
+  const ctx = canvas.getContext('2d');
+  let running = true;
+  function fit(){
+    const dpr = Math.min(window.devicePixelRatio||1, 2);
+    canvas.width = innerWidth*dpr; canvas.height = innerHeight*dpr;
+    canvas.style.width = innerWidth+'px'; canvas.style.height=innerHeight+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  fit();
+  const resizeH = () => fit();
+  window.addEventListener('resize', resizeH);
+
+  // smoothed envelopes
+  let eLvl=0, eBass=0, eMid=0, eHigh=0, eSub=0;
+  // kick detector
+  let bassPrev=0, kickHold=0;
+  let beatPulse = 0; // 1→0 decay on kick
+  let lastKickTime = -999;
+  let kickCount = 0;
+
+  // SLOW: crystalline shards (Yeezus/Black Skinhead — sharp, angular, monochrome)
+  const shards = Array.from({length: 18}, () => ({
+    ang: Math.random()*Math.PI*2,
+    spin: (Math.random()-0.5)*0.4,
+    dist: 0.15 + Math.random()*0.6,
+    size: 40 + Math.random()*180,
+    jag: 3 + Math.floor(Math.random()*4),
+    tilt: Math.random()*Math.PI,
+  }));
+  // radial spike rays
+  const rays = Array.from({length: 48}, (_, i) => ({
+    a: (i/48)*Math.PI*2,
+    len: 0.3 + Math.random()*0.6,
+    w: 0.5 + Math.random()*2.5,
+  }));
+
+  // PASS: stars streaking toward viewer (Rainbow Road forward motion)
+  const stars = Array.from({length: 220}, () => ({
+    a: Math.random()*Math.PI*2,
+    z: Math.random(),       // 0 = far, 1 = near
+    s: 0.4 + Math.random()*1.8,
+    hue: 180 + Math.random()*160, // blue→cyan→magenta→red span
+  }));
+  // rainbow trail curves that whip upward
+  const trails = Array.from({length: 9}, (_,i) => ({
+    offset: i / 9,
+    amp: 0.1 + Math.random()*0.22,
+    hue: 200 + i*18, // spectrum across
+    speed: 0.8 + Math.random()*0.8,
+  }));
+
+  let t = 0, lastT = performance.now();
+  function frame(){
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min(0.05, (now-lastT)/1000); lastT = now;
+    t += dt;
+    const W = innerWidth, H = innerHeight;
+
+    // ----- read audio (robust bins) -----
+    let lvl=0, sub=0, bass=0, mid=0, high=0;
+    let waveAmp = 0;
+    if (analyser && freqData){
+      analyser.getByteFrequencyData(freqData);
+      const n = freqData.length;
+      // Nyquist ≈ sampleRate/2; fftSize=1024 → 512 bins
+      // bin freq = i * (sr/fftSize). For 44.1k: ~43Hz/bin.
+      const subEnd = 3, bassEnd = 10, midEnd = 80, highEnd = 200;
+      for (let i=0;i<subEnd;i++) sub += freqData[i];
+      for (let i=subEnd;i<bassEnd;i++) bass += freqData[i];
+      for (let i=bassEnd;i<midEnd;i++) mid += freqData[i];
+      for (let i=midEnd;i<Math.min(highEnd,n);i++) high += freqData[i];
+      sub /= subEnd*255;
+      bass /= (bassEnd-subEnd)*255;
+      mid /= (midEnd-bassEnd)*255;
+      high /= (Math.min(highEnd,n)-midEnd)*255;
+      for (let i=0;i<n;i++) lvl += freqData[i]; lvl /= n*255;
+
+      analyser.getByteTimeDomainData(timeData);
+      let sum=0;
+      for (let i=0;i<timeData.length;i+=4){ const v=(timeData[i]-128)/128; sum += v*v; }
+      waveAmp = Math.sqrt(sum/(timeData.length/4));
+    }
+
+    // smoothing envelopes
+    eLvl  += (lvl  - eLvl ) * 0.22;
+    eSub  += (sub  - eSub ) * 0.35;
+    eBass += (bass - eBass) * 0.4;
+    eMid  += (mid  - eMid ) * 0.25;
+    eHigh += (high - eHigh) * 0.5;
+
+    // kick detection on bass delta
+    const dBass = bass - bassPrev;
+    bassPrev = bassPrev * 0.82 + bass * 0.18;
+    if (dBass > 0.12 && bass > 0.35 && kickHold <= 0){
+      beatPulse = 1;
+      kickHold = 0.12;
+      lastKickTime = t;
+      kickCount++;
+    }
+    kickHold -= dt;
+    beatPulse *= Math.pow(0.002, dt); // fast decay
+    const kickAge = t - lastKickTime;
+
+    // ---------- WORLD · ONE REACTIVE LINE (pure B&W) ----------
+    // Every visible motion is driven by timeData/freqData.
+
+    // black base
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+
+    // Line IS the only element in the world. No separate center dot. No opacity fade.
+    // `_lineVisible` gates rendering so E3 (silent black hold) stays truly black.
+    // `_reveal` scales horizontal extent honestly: halfSpan = (W/2) * reveal — no clamp.
+    //   On exit X5 this reaches exactly 0 and the line disappears geometrically.
+    // `_amplitudeMultiplier` gates audio reactivity (0 = flat, 1 = full).
+    const reveal = (typeof runWorld._reveal === 'number') ? runWorld._reveal : 0;
+    const ampMult = (typeof runWorld._amplitudeMultiplier === 'number') ? runWorld._amplitudeMultiplier : 0;
+    const lineVisible = !!runWorld._lineVisible;
+    const midY = H/2;
+
+    if (timeData && lineVisible){
+      const halfSpan = (W/2) * reveal;
+      if (halfSpan > 0){
+        const xStart = W/2 - halfSpan;
+        const xEnd   = W/2 + halfSpan;
+        const amp = Math.min(W,H) * 0.18 * (1 + eBass*0.6) * ampMult;
+        ctx.strokeStyle = 'rgba(255,255,255,1)';
+        ctx.lineWidth = 1.5 + beatPulse*0.8*ampMult;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        const segs = 480;
+        for (let i=0;i<=segs;i++){
+          const p = i/segs;
+          const idx = Math.floor(p * timeData.length);
+          const v = ampMult > 0 ? (timeData[idx]-128)/128 : 0;
+          const x = xStart + p * (xEnd - xStart);
+          const y = midY + v * amp;
+          if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      }
+      // halfSpan <= 0: line has contracted to nothing — draw nothing.
+    }
+
+    requestAnimationFrame(frame);
+  }
+  frame();
+  return () => { running = false; window.removeEventListener('resize', resizeH); };
+}
+
+let worldStop = null;
+
+/* ---------- enter / exit — timeline-driven, single vocabulary of motion ---------- */
+
+// HOVER handlers — race-safe. If the cursor moves directly between dots,
+// pointerleave does NOT trigger the full home-return; the other dot's pointerenter
+// smoothly takes over via setHover, reversing any in-flight opacity from current value.
+wrapSlow.addEventListener('pointerenter', () => setHover('slow'));
+wrapSlow.addEventListener('pointerleave', (e) => {
+  const dest = dotUnderElement(e.relatedTarget);
+  if (dest !== 'pass') setHover(null);
+});
+wrapPass.addEventListener('pointerenter', () => setHover('pass'));
+wrapPass.addEventListener('pointerleave', (e) => {
+  const dest = dotUnderElement(e.relatedTarget);
+  if (dest !== 'slow') setHover(null);
+});
+
+// Track per-session world + back-btn for timeline closures.
+let activeW = null, activeBackBtn = null;
+
+// ENTER — runs synchronously inside a user gesture for iOS audio unlock.
+// playTrack happens only at E6 (1990ms in). No sound before then.
+function enter(kind){
+  if (active) return;
+  active = kind;
+  hoveredDot = null; hoverTarget = null;
+  if (homeFadeRAF){ cancelAnimationFrame(homeFadeRAF); homeFadeRAF = null; }
+
+  // iOS — unlock audio context inside the gesture. No play() here; that's E6 (1990ms).
+  try { initAudio(); } catch(e){}
+  if (audioCtx && audioCtx.state === 'suspended'){
+    try { audioCtx.resume(); } catch(e){}
+  }
+  // Silent both elements; window-level unlockAudio() primes them for later play.
+  try { slowEl.pause(); } catch(e){}
+  try { passEl.pause(); } catch(e){}
+  if (audioRouted){
+    try { slowGain.gain.cancelScheduledValues(audioCtx.currentTime); slowGain.gain.value = 0; } catch(e){}
+    try { passGain.gain.cancelScheduledValues(audioCtx.currentTime); passGain.gain.value = 0; } catch(e){}
+  } else {
+    slowEl.volume = 0; passEl.volume = 0;
+  }
+
+  // Measure dot center for the clip-path origin.
+  const wrap   = kind === 'slow' ? wrapSlow : wrapPass;
+  const portal = wrap.querySelector('.portal');
+  const rect   = portal.getBoundingClientRect();
+  const cx = Math.round(rect.left + rect.width  / 2);
+  const cy = Math.round(rect.top  + rect.height / 2);
+  dotCenter = { x: cx, y: cy };
+  wrap.classList.add('active');
+
+  const w = kind === 'slow' ? worldSlow : worldPass;
+  const backBtn = w.querySelector('.back-btn');
+  activeW = w; activeBackBtn = backBtn;
+
+  // Prime world: visible but clipped to 0. Line stays hidden until E4.
+  w.style.transition = 'none';
+  w.style.clipPath   = `circle(0px at ${cx}px ${cy}px)`;
+  w.classList.add('live');
+  runWorld._reveal = 0;
+  runWorld._amplitudeMultiplier = 0;
+  runWorld._audioActive = false;
+  runWorld._lineVisible = false;
+  if (backBtn){
+    backBtn.classList.remove('interactive');
+    backBtn.style.transition = 'none';
+    backBtn.style.opacity = '0';
+  }
+  worldStop = runWorld(kind);
+
+  // Capture starting home opacities — could be mid-hover.
+  const startSlow = homeState.slowOp;
+  const startPass = homeState.passOp;
+  const startAxis = homeState.axisOp;
+  const startLS   = homeState.axisLS;
+  const lerp = (a, b, p) => a + (b - a) * p;
+
+  const target = kind === 'slow' ? slowEl : passEl;
+
+  runTimeline([
+    // E1 — home elements dissolve (0 → 420ms, idleEase)
+    { name:'E1', start:0, duration:420, ease:idleEase, fn:(p)=>{
+      if (kind === 'slow') homeState.passOp = lerp(startPass, 0, p);
+      else                 homeState.slowOp = lerp(startSlow, 0, p);
+      homeState.axisOp = lerp(startAxis, 0, p);
+      homeState.axisLS = lerp(startLS, 0.30, p);
+      applyHomeState();
+    }},
+    // E2 — circle envelops screen (0 → 980ms, primaryEase)
+    { name:'E2', start:0, duration:980, ease:primaryEase, fn:(p)=>{
+      const r = (p * 150).toFixed(2);
+      w.style.clipPath = `circle(${r}vmax at ${cx}px ${cy}px)`;
+    }, onEnd:()=>{
+      sel.classList.add('gone'); // hide selector once fully black
+    }},
+    // E3 — silent black hold (980 → 1080ms). 100ms — minimum gap to register the transition.
+    { name:'E3', start:980, duration:100, fn:()=>{} },
+    // E4 — line extends from point (1080 → 1780ms, primaryEase).
+    { name:'E4', start:1080, duration:700, ease:primaryEase,
+      onStart:()=>{ runWorld._lineVisible = true; },
+      fn:(p)=>{ runWorld._reveal = p; }
+    },
+    // Back-button reveal (1760 → 2320ms, idleEase). Appears near end of line-extension, continues into music.
+    { name:'BackReveal', start:1760, duration:560, ease:idleEase,
+      fn:(p)=>{ if (backBtn) backBtn.style.opacity = (p * 0.6).toFixed(3); },
+      onEnd:()=>{ if (backBtn){ backBtn.classList.add('interactive'); backBtn.style.transition = `opacity 400ms ${idleEaseCSS}`; } }
+    },
+    // E5 — flat line holds (1780 → 1990ms). The moment before the drop.
+    { name:'E5', start:1780, duration:210, fn:()=>{} },
+    // E6 — music begins (1990ms). play() called here, nowhere earlier. Linear ramp 0 → 1 over 700ms.
+    { name:'E6', start:1990, duration:700, ease:linear,
+      onStart:()=>{
+        runWorld._audioActive = true;
+        runWorld._amplitudeMultiplier = 1;
+        try { target.currentTime = 0; } catch(e){}
+        if (audioRouted){
+          const g  = kind === 'slow' ? slowGain : passGain;
+          const og = kind === 'slow' ? passGain : slowGain;
+          if (g)  { try { g.gain.cancelScheduledValues(audioCtx.currentTime); g.gain.value = 0; }  catch(e){} }
+          if (og) { try { og.gain.cancelScheduledValues(audioCtx.currentTime); og.gain.value = 0; } catch(e){} }
+          try { target.volume = 1; } catch(e){}
+        } else {
+          target.volume = 0;
+        }
+        const pp = target.play();
+        if (pp && pp.catch) pp.catch(err => console.warn('play failed', err));
+      },
+      fn:(p)=>{
+        if (audioRouted){
+          const g = kind === 'slow' ? slowGain : passGain;
+          if (g){ try { g.gain.value = p; } catch(e){} }
+        } else {
+          target.volume = p;
+        }
+      }
+    },
+  ]);
+}
+
+// EXIT — timeline-driven. No center dot. Line contracts to 2px, holds, circle closes.
+// Total: ~4310ms to fully-restored home.
+function exit(){
+  if (!active) return;
+  const kind = active;
+  const w = activeW;
+  const wrap = kind === 'slow' ? wrapSlow : wrapPass;
+  const backBtn = activeBackBtn;
+  const target = kind === 'slow' ? slowEl : passEl;
+
+  // Back button fades out over 400ms (the minimum) via CSS transition.
+  if (backBtn){
+    backBtn.classList.remove('interactive');
+    backBtn.style.transition = `opacity 400ms ${idleEaseCSS}`;
+    backBtn.style.opacity = '0';
+  }
+
+  const startAmp = (typeof runWorld._amplitudeMultiplier === 'number') ? runWorld._amplitudeMultiplier : 1;
+  const startRev = (typeof runWorld._reveal === 'number') ? runWorld._reveal : 1;
+
+  runTimeline([
+    // X1 — music fades 1 → 0 linearly over 700ms (mirrors E6's 700ms audio fade).
+    //      amplitudeMultiplier lerps down in parallel — the line quiets as the sound quiets.
+    //      By end of X1 the line is flat, audio is paused, audioActive/ampMult are zero.
+    { name:'X1', start:0, duration:700, ease:linear, fn:(p)=>{
+      const volume = Math.max(0, 1 - p);
+      if (audioRouted){
+        const g = kind === 'slow' ? slowGain : passGain;
+        if (g){ try { g.gain.value = volume; } catch(e){} }
+      } else {
+        target.volume = volume;
+      }
+      runWorld._amplitudeMultiplier = startAmp * (1 - p);
+    }, onEnd:()=>{
+      try { target.pause(); } catch(e){}
+      try { target.currentTime = 0; } catch(e){}
+      runWorld._audioActive = false;
+      runWorld._amplitudeMultiplier = 0;
+    }},
+    // X2 — flat line holds (700 → 910ms, 210ms). Mirrors E5's flat pause.
+    { name:'X2', start:700, duration:210, fn:()=>{} },
+    // X3 — line contracts from full width to zero (910 → 1610ms, 700ms, primaryEase).
+    //      Mirrors E4 exactly: same duration, same curve, reversed direction.
+    //      halfSpan = (W/2) * reveal reaches exactly 0 — line geometrically ceases.
+    { name:'X3', start:910, duration:700, ease:primaryEase, fn:(p)=>{
+      runWorld._reveal = startRev * (1 - p);
+    }},
+    // X4 — silent black hold (1610 → 1710ms, 100ms). Mirrors E3 exactly.
+    { name:'X4', start:1610, duration:100, fn:()=>{} },
+    // X5 — black contracts 150vmax → 0 at original dot (1710 → 2690ms, 980ms, primaryEase).
+    //      Mirrors E2 exactly: same duration, same curve, reversed direction.
+    { name:'X5', start:1710, duration:980, ease:primaryEase,
+      onStart:()=>{ w.style.transition = 'none'; sel.classList.remove('gone'); },
+      fn:(p)=>{
+        const r = ((1 - p) * 150).toFixed(2);
+        w.style.clipPath = `circle(${r}vmax at ${dotCenter.x}px ${dotCenter.y}px)`;
+      }
+    },
+    // Home fade-in during X5's final 420ms (2270 → 2690ms) — mirrors E1 exactly.
+    //      Parallel (NOT staggered): axis + non-active dot fade together over 420ms.
+    { name:'XhomeFade', start:2270, duration:420, ease:idleEase, fn:(p)=>{
+      homeState.axisOp = p;
+      homeState.axisLS = 0.30 + (0.34 - 0.30) * p;
+      if (kind === 'slow') homeState.passOp = p;
+      else                 homeState.slowOp = p;
+      applyHomeState();
+    }},
+  ], () => {
+    // X8 — cleanup. Breathing resumes naturally now that !active && !hoveredDot.
+    w.classList.remove('live');
+    w.style.clipPath = '';
+    w.style.transition = '';
+    if (worldStop){ worldStop(); worldStop = null; }
+    wrap.classList.remove('active');
+    runWorld._amplitudeMultiplier = 0;
+    runWorld._reveal = 0;
+    runWorld._audioActive = false;
+    runWorld._lineVisible = false;
+    homeState.slowOp = 1; homeState.passOp = 1; homeState.axisOp = 1; homeState.axisLS = 0.34;
+    applyHomeState();
+    active = null;
+    activeW = null; activeBackBtn = null;
+  });
+}
+
+// Dots act as PLAY BUTTONS. pointerdown keeps us in the gesture for iOS audio unlock.
+function bindTap(el, kind){
+  const handler = (e) => { e.preventDefault(); enter(kind); };
+  el.addEventListener('pointerdown', handler);
+  el.addEventListener('click', (e) => { e.preventDefault(); });
+}
+bindTap(wrapSlow, 'slow');
+bindTap(wrapPass, 'pass');
+
+// Back-button hover — 0.6 idle → 1.0 on hover, 400ms (minimum) with idle curve.
+[worldSlow, worldPass].forEach(w => {
+  const btn = w.querySelector('.back-btn');
+  if (!btn) return;
+  btn.addEventListener('mouseenter', () => {
+    if (!btn.classList.contains('interactive')) return;
+    btn.style.transition = `opacity 400ms ${idleEaseCSS}`;
+    btn.style.opacity = '1';
+  });
+  btn.addEventListener('mouseleave', () => {
+    if (!btn.classList.contains('interactive')) return;
+    btn.style.transition = `opacity 400ms ${idleEaseCSS}`;
+    btn.style.opacity = '0.6';
+  });
+});
+
+// Idle breathing — starts after hoverTarget declared; reads it safely on first frame.
+requestAnimationFrame(breathe);
+
+document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', exit));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && active) exit(); });
+
+/* ---------- tweaks ---------- */
+const tBtn = document.getElementById('tweaksBtn');
+const tPanel = document.getElementById('tweaksPanel');
+const tClose = document.getElementById('tweaksClose');
+const tGrain = document.getElementById('tGrain'), vGrain = document.getElementById('vGrain');
+const tBreath = document.getElementById('tBreath'), vBreath = document.getElementById('vBreath');
+const tBloom = document.getElementById('tBloom'), vBloom = document.getElementById('vBloom');
+const tAudio = document.getElementById('tAudio');
+const tAxis = document.getElementById('tAxis');
+
+function syncTweaksUI(){
+  tGrain.value = TWEAKS.grain; vGrain.textContent = TWEAKS.grain;
+  tBreath.value = TWEAKS.breath; vBreath.textContent = TWEAKS.breath;
+  tBloom.value = TWEAKS.bloom; vBloom.textContent = TWEAKS.bloom;
+  tAudio.checked = TWEAKS.audio;
+  tAxis.value = TWEAKS.axisCopy;
+  axisWord.textContent = TWEAKS.axisCopy;
+  document.querySelector('.grain-layer')?.remove();
+  // add a body-level grain that respects the slider
+  let gl = document.querySelector('.grain');
+  if (!gl){
+    gl = document.createElement('div'); gl.className='grain';
+    document.body.appendChild(gl);
+  }
+  gl.style.opacity = (0.25 * TWEAKS.grain/100).toFixed(3);
+  setHalos();
+}
+syncTweaksUI();
+
+tBtn.addEventListener('click', () => { tBtn.classList.remove('on'); tPanel.classList.add('open'); });
+tClose.addEventListener('click', () => { tPanel.classList.remove('open'); tBtn.classList.add('on'); });
+
+function postEdit(edits){
+  Object.assign(TWEAKS, edits);
+  try{ window.parent.postMessage({type:'__edit_mode_set_keys', edits}, '*'); }catch(e){}
+  syncTweaksUI();
+}
+tGrain.addEventListener('input', () => postEdit({ grain: +tGrain.value }));
+tBreath.addEventListener('input', () => postEdit({ breath: +tBreath.value }));
+tBloom.addEventListener('input', () => postEdit({ bloom: +tBloom.value }));
+tAudio.addEventListener('change', () => postEdit({ audio: tAudio.checked }));
+tAxis.addEventListener('input', () => postEdit({ axisCopy: tAxis.value || 'pick a side' }));
+
+/* host edit-mode handshake */
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || typeof d !== 'object') return;
+  if (d.type === '__activate_edit_mode'){ tBtn.classList.remove('on'); tPanel.classList.add('open'); }
+  if (d.type === '__deactivate_edit_mode'){ tPanel.classList.remove('open'); tBtn.classList.add('on'); }
+});
+try{ window.parent.postMessage({type:'__edit_mode_available'}, '*'); }catch(e){}
+</script>
+</body>
+</html>

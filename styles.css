@@ -1,0 +1,307 @@
+/* ── Reset & base ── */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Cormorant Garamond', serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Stage layout ── */
+
+.stage {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+}
+
+/* ── Panel base ── */
+
+.panel {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.8s ease;
+}
+
+.panel:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.2);
+  outline-offset: -4px;
+}
+
+.panel__content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1.5rem;
+}
+
+.panel__title {
+  font-weight: 300;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: opacity 0.6s ease, text-shadow 0.6s ease, letter-spacing 0.6s ease;
+  opacity: 0.5;
+}
+
+.panel__glyph {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* ── Glyph on hover ── */
+
+.panel.is-hover .panel__glyph {
+  opacity: 0.3;
+}
+
+/* ── Title states ── */
+
+.panel.is-hover .panel__title {
+  opacity: 0.8;
+  letter-spacing: 0.22em;
+}
+
+.panel.is-playing .panel__title {
+  opacity: 1;
+  letter-spacing: 0.25em;
+}
+
+/* ── Canvas visualizer ── */
+
+.panel__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+}
+
+/* ══════════════════════════════════════════
+   SLOW DANCE — plum, oil-black, purple
+   ══════════════════════════════════════════ */
+
+.panel--slow-dance {
+  background: #0a0308;
+  color: #e8d0e0;
+}
+
+.panel--slow-dance .panel__glyph {
+  background: rgba(200, 140, 180, 0.6);
+}
+
+/* Bloom */
+
+.panel__bloom {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(45, 20, 56, 0.4) 0%, transparent 70%);
+  opacity: 0.4;
+  animation: bloom-breathe 10s ease-in-out infinite;
+}
+
+.panel.is-hover .panel__bloom {
+  opacity: 0.6;
+}
+
+.panel.is-playing .panel__bloom {
+  opacity: 1;
+}
+
+@keyframes bloom-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+/* Grain overlay */
+
+.panel__grain {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  filter: url(#grain);
+  opacity: 0.04;
+  pointer-events: none;
+  animation: grain-drift 20s linear infinite;
+}
+
+.panel.is-playing .panel__grain {
+  opacity: 0.06;
+}
+
+@keyframes grain-drift {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(10%, 10%); }
+}
+
+/* Slow Dance title glow when playing */
+
+.panel--slow-dance.is-playing .panel__title {
+  text-shadow: 0 0 40px rgba(120, 40, 90, 0.4), 0 0 80px rgba(80, 20, 60, 0.2);
+}
+
+.panel--slow-dance.is-hover .panel__title {
+  text-shadow: 0 0 30px rgba(120, 40, 90, 0.2);
+}
+
+/* ══════════════════════════════════════════
+   PASSENGER SIDE — graphite, steel, cold
+   ══════════════════════════════════════════ */
+
+.panel--passenger-side {
+  background: #0f1114;
+  color: #c8cdd4;
+}
+
+.panel--passenger-side .panel__glyph {
+  background: rgba(180, 195, 210, 0.5);
+}
+
+/* Idle streak — faint ambient drift */
+
+.panel__streak {
+  position: absolute;
+  left: -100%;
+  width: 200%;
+  pointer-events: none;
+}
+
+.streak-1 {
+  height: 1px;
+  top: 45%;
+  background: linear-gradient(90deg, transparent 0%, rgba(180, 200, 220, 0.08) 40%, rgba(180, 200, 220, 0.08) 60%, transparent 100%);
+  opacity: 0.5;
+  animation: streak-idle 25s linear infinite;
+}
+
+.panel.is-hover .streak-1 {
+  animation-duration: 15s;
+  opacity: 0.7;
+}
+
+@keyframes streak-idle {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+/* Reflective sheen */
+
+.panel__sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(105deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(200, 215, 230, 0.03) 45%,
+    rgba(200, 215, 230, 0.05) 50%,
+    rgba(200, 215, 230, 0.03) 55%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  transition: opacity 1s ease;
+}
+
+.panel.is-hover .panel__sheen {
+  opacity: 0.5;
+  animation: sheen-pass 8s ease-in-out infinite;
+}
+
+.panel.is-playing .panel__sheen {
+  opacity: 1;
+  animation: sheen-pass 15s linear infinite;
+}
+
+@keyframes sheen-pass {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Passenger Side title glow when playing */
+
+.panel--passenger-side.is-playing .panel__title {
+  text-shadow: 0 0 40px rgba(160, 185, 210, 0.2), 0 0 80px rgba(140, 165, 190, 0.1);
+}
+
+.panel--passenger-side.is-hover .panel__title {
+  text-shadow: 0 0 30px rgba(160, 185, 210, 0.1);
+}
+
+/* ── Divider ── */
+
+.divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .panel__bloom,
+  .panel__grain,
+  .panel__streak,
+  .panel__sheen {
+    animation: none !important;
+  }
+
+  .panel.is-playing .panel__bloom {
+    opacity: 0.6;
+  }
+
+  .panel.is-playing .panel__title {
+    animation: reduced-pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes reduced-pulse {
+    0%, 100% { opacity: 0.85; }
+    50% { opacity: 1; }
+  }
+}
+
+/* ── Mobile ── */
+
+@media (max-width: 767px) {
+  .stage {
+    flex-direction: column;
+  }
+
+  .panel {
+    height: 50vh;
+    flex: none;
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .panel__title {
+    font-size: clamp(1.5rem, 6vw, 2.4rem);
+  }
+}
