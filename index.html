@@ -289,6 +289,14 @@
     #axisWord{display:none}
     .mobile-only{display:inline}
     .portal-wrap{pointer-events:none !important}
+    /* Full-width axis so the text lands at true viewport center between the dots. */
+    .axis{width:100% !important}
+    /* "made for desktop" must stay on a single line at every mobile width.
+       letter-spacing scales down on narrow screens before wrapping could ever happen. */
+    .axis .center .word.mobile-only{
+      white-space:nowrap;
+      letter-spacing:clamp(0.18em, 0.6vw, 0.34em);
+    }
   }
 
 
@@ -339,7 +347,7 @@
       <span class="line"></span>
       <div class="center" id="axisCenter">
         <span class="word" id="axisWord">pick a side</span>
-        <span class="word mobile-only">this is a desktop experience</span>
+        <span class="word mobile-only">made for desktop</span>
       </div>
       <span class="line"></span>
     </div>
