@@ -291,6 +291,8 @@
     .portal-wrap{pointer-events:none !important}
     /* Full-width axis so the text lands at true viewport center between the dots. */
     .axis{width:100% !important}
+    /* Hide the decorative flanking lines on mobile — text with brackets stands alone. */
+    .axis .line{display:none}
     /* "made for desktop" must stay on a single line at every mobile width.
        letter-spacing scales down on narrow screens before wrapping could ever happen. */
     .axis .center .word.mobile-only{
@@ -586,7 +588,9 @@ function breathCurve(t){
   return 0;
 }
 function breathe(){
-  const amt = TWEAKS.breath/100 * 0.02; // 2% ceiling
+  // Mobile dots breathe with 20% more presence. Re-check every tick so rotation/resize takes effect.
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const amt = TWEAKS.breath/100 * (isMobile ? 0.024 : 0.02); // 2.4% on mobile, 2% on desktop
   const ts = (performance.now() - t0) / 1000;
   const s1 = 1 + amt * breathCurve(((ts      ) / 5.8) % 1);
   const s2 = 1 + amt * breathCurve(((ts + 1.3) / 4.3) % 1);
