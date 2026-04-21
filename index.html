@@ -440,15 +440,28 @@ let slowGain = null, passGain = null;
 
   slowEl = document.createElement('audio');
   slowEl.src = slowUrl;
-  slowEl.loop = true; slowEl.preload = 'auto';
+  slowEl.loop = false; slowEl.preload = 'auto';
   slowEl.setAttribute('playsinline',''); slowEl.setAttribute('webkit-playsinline','');
   slowEl.playsInline = true;
   passEl = document.createElement('audio');
   passEl.src = passUrl;
-  passEl.loop = true; passEl.preload = 'auto';
+  passEl.loop = false; passEl.preload = 'auto';
   passEl.setAttribute('playsinline',''); passEl.setAttribute('webkit-playsinline','');
   passEl.playsInline = true;
   document.body.appendChild(slowEl); document.body.appendChild(passEl);
+
+  // Auto-exit when a song finishes naturally. 800ms of silence lets the last note's
+  // echo breathe — line is still audio-reactive so it flattens on its own — then
+  // the standard exit() runs. Double-check `active` at fire time so a manual back-click
+  // during the 800ms window doesn't double-trigger.
+  slowEl.addEventListener('ended', () => {
+    if (active !== 'slow') return;
+    setTimeout(() => { if (active === 'slow') exit(); }, 800);
+  });
+  passEl.addEventListener('ended', () => {
+    if (active !== 'pass') return;
+    setTimeout(() => { if (active === 'pass') exit(); }, 800);
+  });
 })();
 
 /* Unlock audio on FIRST user interaction — iOS/Safari requires this */
