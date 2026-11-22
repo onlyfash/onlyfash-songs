@@ -250,21 +250,33 @@ describe('api/waitlist', () => {
     assert.equal(calls.length, 1);
   });
 
-  it('still joins the waitlist when the answers are missing or the key is unset', async () => {
+  it('still joins the waitlist when the answers are missing', async () => {
     const missing = await invoke(mockReq({ body: signupBody({ answers: [] }) }));
     assert.equal(missing.res.statusCode, 200);
-    assert.equal(calls.length, 1);
-
-    calls.length = 0;
-    delete process.env.ONLYFASH_ANSWERS_KEY;
-    const noKey = await invoke(mockReq({ body: signupBody() }));
-    assert.equal(noKey.res.statusCode, 200);
-    assert.deepEqual(noKey.json, { ok: true, status: 'ok' });
+    assert.deepEqual(missing.json, { ok: true, status: 'ok' });
     assert.equal(calls.length, 1);
     assert.equal(calls[0].url, UPSTREAM);
   });
 
-  it('reads a streamed body and prefers the env key over anything else', async () => {
+  it('posts the answers with no key header when ONLYFASH_ANSWERS_KEY is unset', async () => {
+    delete process.env.ONLYFASH_ANSWERS_KEY;
+    const out = await invoke(mockReq({ body: signupBody() }));
+    assert.equal(out.res.statusCode, 200);
+    assert.deepEqual(out.json, { ok: true, status: 'ok' });
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].url, ANSWERS);
+    assert.equal(Object.prototype.hasOwnProperty.call(calls[1].headers, 'x-onlyfash-key'), false);
+    assert.equal(calls[1].headers['content-type'], 'application/json');
+    assert.deepEqual(calls[1].body.answers, answers());
+
+    calls.length = 0;
+    process.env.ONLYFASH_ANSWERS_KEY = '   ';
+    await invoke(mockReq({ body: signupBody() }));
+    assert.equal(calls.length, 2);
+    assert.equal(Object.prototype.hasOwnProperty.call(calls[1].headers, 'x-onlyfash-key'), false);
+  });
+
+  it('reads a streamed body and sends the env key when it is set', async () => {
     process.env.ONLYFASH_ANSWERS_KEY = 'env-key';
     const payload = signupBody();
     const req = {

@@ -6,11 +6,10 @@
  * to https://iwannafash.com. Nothing on iwannafash.com is changed.
  *
  * After that forward succeeds — or the worker says the address is already
- * on the list — the three answers are posted to the onlyfash answers worker.
+ * on the list — the three answers are always posted to the onlyfash answers
+ * worker. That worker accepts answers for emails already on the waitlist.
+ * The x-onlyfash-key header is included only when ONLYFASH_ANSWERS_KEY is set.
  * A failure there is logged and does not change the waitlist response.
- *
- * The answers key is ONLYFASH_ANSWERS_KEY. It is not stored in this file:
- * the GitHub repository is public.
  *
  * Node.js request/response handler (no framework). Vercel serves the rest of
  * this repo as static files; this file is only the /api/waitlist function.
@@ -145,11 +144,10 @@ async function saveAnswers(req, email, payload) {
     console.error('answers skipped');
     return;
   }
+
+  const headers = { 'content-type': 'application/json' };
   const key = answersKey();
-  if (!key) {
-    console.error('answers skipped: no key');
-    return;
-  }
+  if (key) headers['x-onlyfash-key'] = key;
 
   const body = {
     email: email,
@@ -162,10 +160,7 @@ async function saveAnswers(req, email, payload) {
   try {
     const saved = await fetch(ANSWERS_URL, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-onlyfash-key': key,
-      },
+      headers: headers,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(8000),
     });
