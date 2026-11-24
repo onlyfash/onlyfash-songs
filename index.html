@@ -36,8 +36,8 @@
   .stage{
     position:relative;min-height:100vh;min-height:100dvh;
     background:var(--paper);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    overflow-x:hidden;overflow-y:auto;
     padding:
       max(72px, calc(env(safe-area-inset-top, 0px) + 56px))
       max(24px, env(safe-area-inset-right, 0px))
@@ -82,6 +82,7 @@
   .stack{
     position:relative;z-index:10;
     width:min(100%, 22rem);
+    margin-top:auto;margin-bottom:auto;
     display:flex;flex-direction:column;align-items:center;
     gap:clamp(28px, 6vh, 52px);
     text-align:center;
@@ -182,6 +183,30 @@
 
   .cta-block{width:100%}
   form{margin:0;width:100%;position:relative}
+  .flow{
+    min-height:13rem;
+    transition:opacity .28s ease;
+  }
+  .flow.is-fading{opacity:0;pointer-events:none}
+  .meta{
+    display:flex;align-items:center;justify-content:space-between;
+    min-height:44px;
+  }
+  .step{
+    margin:0;
+    font-size:10px;letter-spacing:.28em;
+    color:var(--dim);
+  }
+  .ask{
+    display:block;
+    margin:0 0 16px;
+    font-size:clamp(14px, 3.8vw, 15px);
+    font-weight:400;
+    letter-spacing:.01em;
+    line-height:1.45;
+    color:var(--ink);
+    text-wrap:balance;
+  }
   .field{
     position:relative;
     display:flex;align-items:center;
@@ -189,16 +214,21 @@
     border-radius:980px;
     overflow:hidden;
     background:rgba(7,3,9,.35);
+    transition:border-color .2s ease, box-shadow .2s ease, border-radius .2s ease;
+  }
+  .field.is-tall{
+    border-radius:22px;
+    align-items:flex-end;
   }
   .field:focus-within{
     border-color:rgba(176,120,216,.7);
     box-shadow:0 0 0 1px rgba(176,120,216,.25);
   }
-  label.sr, .hp{
+  .sr, .hp{
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
   }
-  input.cta{
+  input.cta, textarea.cta{
     appearance:none;-webkit-appearance:none;
     flex:1;width:100%;min-width:0;
     margin:0;border:0;background:transparent;
@@ -213,7 +243,19 @@
     text-align:left;
   }
   input.cta::placeholder{color:var(--dim);opacity:1;letter-spacing:.08em}
+  textarea.cta{
+    resize:none;
+    overflow:hidden;
+    min-height:48px;
+    max-height:160px;
+    padding-top:14px;
+    padding-bottom:14px;
+    line-height:1.45;
+    white-space:pre-wrap;
+    overflow-wrap:break-word;
+  }
   button.go{
+    display:inline-flex;align-items:center;justify-content:center;
     appearance:none;-webkit-appearance:none;
     flex:0 0 auto;
     margin:4px 4px 4px 0;
@@ -228,6 +270,33 @@
   }
   button.go:hover{color:var(--ink)}
   button.go:disabled{opacity:.4;cursor:default}
+  button.go[data-kind="next"]{
+    letter-spacing:0;
+    font-size:16px;
+    line-height:1;
+    padding:0 14px;
+  }
+  .back{
+    appearance:none;-webkit-appearance:none;
+    display:inline-flex;align-items:center;justify-content:center;
+    margin:0 0 0 auto;padding:0 4px 0 12px;
+    min-height:44px;
+    border:0;background:transparent;
+    color:var(--dim);
+    font:inherit;font-size:10px;font-weight:400;
+    letter-spacing:.18em;text-transform:lowercase;
+    cursor:pointer;
+    visibility:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .back.is-on{visibility:visible}
+  .back:hover{color:var(--ink)}
+  .back:focus{outline:none}
+  .back:focus-visible{
+    color:var(--ink);
+    border-radius:980px;
+    box-shadow:0 0 0 1px rgba(176,120,216,.35);
+  }
   .consent{
     margin:14px 0 0;
     font-size:10px;letter-spacing:.08em;line-height:1.5;
@@ -238,7 +307,7 @@
     font-size:11px;letter-spacing:.06em;line-height:1.5;
     color:var(--hot);
   }
-  .err[hidden], .done[hidden], form[hidden]{display:none !important}
+  .err[hidden], .done[hidden], form[hidden], .ask[hidden], .consent[hidden], .step[hidden]{display:none !important}
   .done{
     margin:0;
     font-size:clamp(16px, 4vw, 20px);
@@ -259,19 +328,19 @@
       padding-left:max(16px, env(safe-area-inset-left, 0px));
       padding-right:max(16px, env(safe-area-inset-right, 0px));
     }
-    input.cta{padding-left:14px;letter-spacing:.02em}
+    input.cta, textarea.cta{padding-left:14px;letter-spacing:.02em}
     button.go{padding:0 12px}
     .consent{letter-spacing:.02em}
   }
 
   @media (min-width:768px){
     .portal{width:clamp(220px, 28vmin, 320px)}
-    input.cta{font-size:13px;letter-spacing:.08em}
+    input.cta, textarea.cta{font-size:13px;letter-spacing:.08em}
     .label .name{letter-spacing:.32em}
   }
 
   @media (prefers-reduced-motion:reduce){
-    .grain, .surface, .blink, .caret, .halo{animation:none;transition:none}
+    .grain, .surface, .blink, .caret, .halo, .flow, .field{animation:none;transition:none}
   }
 </style>
 </head>
@@ -304,15 +373,24 @@
 
       <div class="cta-block">
         <form id="waitform" novalidate>
-          <label class="sr" for="email">Email for the waitlist</label>
-          <div class="field">
-            <input class="cta" id="email" name="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="go" autocapitalize="none" spellcheck="false" placeholder="Join the waitlist" required />
-            <input class="hp" id="hp" name="company" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
-            <button class="go" id="go" type="submit" aria-label="Join the waitlist">join</button>
+          <div class="flow" id="flow">
+            <div class="meta">
+              <p class="step" id="stepmark" aria-label="Question 1 of 3">1/3</p>
+              <button class="back" id="back" type="button">back</button>
+            </div>
+            <label class="ask" id="ask" for="answer">fash. what does it feel like to you?</label>
+            <label class="sr" for="email">Email for the waitlist</label>
+            <div class="field" id="field">
+              <textarea class="cta" id="answer" name="answer" rows="1" maxlength="600" enterkeyhint="next" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required></textarea>
+              <input class="cta" id="email" name="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="go" autocapitalize="none" spellcheck="false" placeholder="Join the waitlist" hidden />
+              <input class="hp" id="hp" name="company" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+              <button class="go" id="go" type="submit" data-kind="next" aria-label="Continue">→</button>
+            </div>
+            <p class="consent" id="consent" hidden>Only updates from FASH. Unsubscribe anytime.</p>
+            <p class="err" id="err" role="alert" hidden></p>
           </div>
-          <p class="consent" id="consent">Only updates from FASH. Unsubscribe anytime.</p>
-          <p class="err" id="err" hidden></p>
         </form>
+        <p class="sr" id="live" aria-live="polite"></p>
         <p class="done" id="done" hidden>See you soon.</p>
       </div>
     </div>
@@ -321,8 +399,9 @@
   <audio class="track" id="track" src="audio/slow-dance-master.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
 
   <!--
-    Waitlist posts JSON to same-origin /api/waitlist (api/waitlist.js),
-    which forwards server-side to https://iwannafash.com/api/waitlist.
+    Three questions, then the email. The page posts JSON to same-origin
+    /api/waitlist (api/waitlist.js), which forwards the email server-side
+    to https://iwannafash.com/api/waitlist and then stores the answers.
   -->
   <script>
     (function () {
@@ -446,62 +525,219 @@
   <script>
     (function () {
       var WAITLIST_URL = '/api/waitlist';
+      var QUESTIONS = [
+        'fash. what does it feel like to you?',
+        'what are you chasing that nobody knows about?',
+        'who do you become when the lights go low?'
+      ];
+      var FADE_MS = 280;
+      var MAX_ANSWER = 600;
+      var DUPLICATE_RE = /duplicate|already|subscribed|on[-_ ]list|exists/i;
+
       var form = document.getElementById('waitform');
-      var input = document.getElementById('email');
+      var flow = document.getElementById('flow');
+      var answer = document.getElementById('answer');
+      var email = document.getElementById('email');
+      var field = document.getElementById('field');
+      var ask = document.getElementById('ask');
+      var stepmark = document.getElementById('stepmark');
+      var back = document.getElementById('back');
       var hp = document.getElementById('hp');
       var go = document.getElementById('go');
       var err = document.getElementById('err');
       var done = document.getElementById('done');
       var consent = document.getElementById('consent');
-      if (!form || !input || !go || !done) return;
+      var live = document.getElementById('live');
+      if (!form || !flow || !answer || !email || !go || !done) return;
 
+      var answers = ['', '', ''];
+      var step = 0;
       var busy = false;
+      var lock = false;
+      var reduce = false;
+      try {
+        reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      } catch (e) {}
       var EMAIL_RE = /^[a-z0-9._%+\-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 
+      function activeField() {
+        return step >= QUESTIONS.length ? email : answer;
+      }
       function showError(msg, html) {
         if (!err) return;
         err.hidden = false;
         if (html) err.innerHTML = html;
         else err.textContent = msg;
+        activeField().setAttribute('aria-invalid', 'true');
       }
       function hideError() {
         if (!err) return;
         err.hidden = true;
         err.textContent = '';
+        answer.removeAttribute('aria-invalid');
+        email.removeAttribute('aria-invalid');
+      }
+      function grow() {
+        if (answer.hidden) return;
+        answer.style.height = 'auto';
+        var full = answer.scrollHeight;
+        var next = Math.min(full, 160);
+        answer.style.height = next + 'px';
+        answer.style.overflow = full > 160 ? 'auto' : 'hidden';
+        if (field) field.classList.toggle('is-tall', full > 72);
+      }
+      function render(opts) {
+        var emailStep = step >= QUESTIONS.length;
+        if (stepmark) {
+          if (!emailStep) {
+            stepmark.hidden = false;
+            stepmark.textContent = (step + 1) + '/3';
+            stepmark.setAttribute('aria-label', 'Question ' + (step + 1) + ' of 3');
+          } else {
+            stepmark.hidden = true;
+          }
+        }
+        if (ask) {
+          ask.hidden = emailStep;
+          if (!emailStep) ask.textContent = QUESTIONS[step];
+        }
+        answer.hidden = emailStep;
+        email.hidden = !emailStep;
+        if (consent) consent.hidden = !emailStep;
+        if (back) {
+          var showBack = step > 0;
+          back.classList.toggle('is-on', showBack);
+          back.disabled = !showBack;
+          back.tabIndex = showBack ? 0 : -1;
+          back.setAttribute('aria-hidden', showBack ? 'false' : 'true');
+        }
+        if (!emailStep) {
+          answer.value = answers[step] || '';
+          answer.maxLength = MAX_ANSWER;
+          go.setAttribute('data-kind', 'next');
+          go.textContent = '\u2192';
+          go.setAttribute('aria-label', 'Continue');
+          grow();
+          window.requestAnimationFrame(grow);
+        } else {
+          if (field) field.classList.remove('is-tall');
+          go.setAttribute('data-kind', 'join');
+          go.textContent = 'join';
+          go.setAttribute('aria-label', 'Join the waitlist');
+        }
+        if (opts && opts.focus) {
+          if (live) {
+            live.textContent = emailStep
+              ? 'Email for the waitlist'
+              : 'Question ' + (step + 1) + ' of 3. ' + QUESTIONS[step];
+          }
+          try { activeField().focus(); } catch (e) {}
+        }
+      }
+      function goTo(next) {
+        if (lock) return;
+        function apply() {
+          step = next;
+          render({ focus: true });
+        }
+        if (reduce) {
+          apply();
+          return;
+        }
+        lock = true;
+        flow.classList.add('is-fading');
+        window.setTimeout(function () {
+          apply();
+          void flow.offsetWidth;
+          flow.classList.remove('is-fading');
+          window.setTimeout(function () { lock = false; }, FADE_MS);
+        }, FADE_MS);
+      }
+      function continueAnswer() {
+        if (busy || lock || step >= QUESTIONS.length) return;
+        var value = (answer.value || '').trim();
+        if (!value) {
+          showError('this one needs an answer.');
+          try { answer.focus(); } catch (e) {}
+          return;
+        }
+        if (value.length > MAX_ANSWER) value = value.slice(0, MAX_ANSWER);
+        answers[step] = value;
+        hideError();
+        goTo(step + 1);
       }
       function unlock() {
         busy = false;
-        input.disabled = false;
+        answer.disabled = false;
+        email.disabled = false;
         go.disabled = false;
+        if (back) back.disabled = step === 0;
         form.removeAttribute('aria-busy');
       }
       function finish() {
         form.hidden = true;
-        if (consent) consent.hidden = true;
         if (err) err.hidden = true;
+        if (live) live.textContent = '';
         done.hidden = false;
         try { done.focus(); } catch (e) {}
+      }
+      function accepted(res, data) {
+        if (res.ok && data && data.ok) return true;
+        if (res.status === 409) return true;
+        var blob = '';
+        if (data) {
+          ['status', 'error', 'message', 'code', 'reason'].forEach(function (key) {
+            if (typeof data[key] === 'string') blob += ' ' + data[key];
+          });
+          if (data.duplicate === true || data.already === true || data.exists === true) return true;
+        }
+        return DUPLICATE_RE.test(blob);
+      }
+
+      answer.addEventListener('input', function () {
+        if (answer.value.length > MAX_ANSWER) answer.value = answer.value.slice(0, MAX_ANSWER);
+        grow();
+      });
+      answer.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+        e.preventDefault();
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else continueAnswer();
+      });
+      if (back) {
+        back.addEventListener('click', function () {
+          if (busy || lock || step === 0) return;
+          if (step < QUESTIONS.length) answers[step] = answer.value;
+          hideError();
+          goTo(step - 1);
+        });
       }
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        if (busy) return;
-        var email = (input.value || '').trim();
-        if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
+        if (busy || lock) return;
+        if (step < QUESTIONS.length) {
+          continueAnswer();
+          return;
+        }
+        var value = (email.value || '').trim();
+        if (!value || value.length > 254 || !EMAIL_RE.test(value)) {
           showError("That email doesn't look right.");
-          try { input.focus(); } catch (err2) {}
+          try { email.focus(); } catch (err2) {}
           return;
         }
         busy = true;
         hideError();
-        input.disabled = true;
+        answer.disabled = true;
+        email.disabled = true;
         go.disabled = true;
+        if (back) back.disabled = true;
         form.setAttribute('aria-busy', 'true');
 
         var body = {
-          email: email,
+          email: value,
           company: hp ? hp.value : '',
-          source: 'onlyfash.com',
+          answers: QUESTIONS.map(function (q, i) { return { q: q, a: answers[i] }; }),
           referrer: document.referrer || ''
         };
 
@@ -514,7 +750,7 @@
             return { res: res, data: data };
           });
         }).then(function (out) {
-          if (out.res.ok && out.data && out.data.ok) {
+          if (accepted(out.res, out.data)) {
             finish();
             return;
           }
@@ -530,6 +766,8 @@
           unlock();
         });
       });
+
+      render();
     })();
   </script>
 </body>

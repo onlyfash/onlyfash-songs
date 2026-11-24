@@ -5,13 +5,27 @@
  * posts here and this function forwards server-side with Origin/Referer set
  * to https://iwannafash.com. Nothing on iwannafash.com is changed.
  *
+ * After that forward succeeds — or the worker says the address is already
+ * on the list — the three answers are always posted to the onlyfash answers
+ * worker. That worker accepts answers for emails already on the waitlist.
+ * The x-onlyfash-key header is included only when ONLYFASH_ANSWERS_KEY is set.
+ * A failure there is logged and does not change the waitlist response.
+ *
  * Node.js request/response handler (no framework). Vercel serves the rest of
  * this repo as static files; this file is only the /api/waitlist function.
  */
 
 const UPSTREAM = 'https://iwannafash.com/api/waitlist';
+const ANSWERS_URL = 'https://onlyfash-answers.heyyy-e22.workers.dev/answers';
 const EMAIL_RE = /^[a-z0-9._%+\-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
 const MAX_BODY = 8192;
+const MAX_ANSWER = 600;
+const QUESTIONS = [
+  'fash. what does it feel like to you?',
+  'what are you chasing that nobody knows about?',
+  'who do you become when the lights go low?',
+];
+const DUPLICATE_RE = /duplicate|already|subscribed|on[-_ ]list|exists/i;
 
 function send(res, status, body) {
   const payload = JSON.stringify(body);
@@ -34,6 +48,56 @@ function cleanReferrer(value) {
 
 function emailInvalid(email) {
   return typeof email !== 'string' || email.length === 0 || email.length > 254 || !EMAIL_RE.test(email);
+}
+
+function answersKey() {
+  const env = process.env.ONLYFASH_ANSWERS_KEY;
+  if (typeof env === 'string' && env.trim()) return env.trim();
+  return '';
+}
+
+function headerValue(req, name) {
+  const headers = req && req.headers;
+  if (!headers) return '';
+  const raw = headers[name] || headers[String(name).toLowerCase()];
+  if (Array.isArray(raw)) return typeof raw[0] === 'string' ? raw[0] : '';
+  return typeof raw === 'string' ? raw : '';
+}
+
+function countryFrom(req) {
+  const value = headerValue(req, 'x-vercel-ip-country').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(value)) return '';
+  return value;
+}
+
+function cleanAnswers(value) {
+  if (!Array.isArray(value) || value.length !== 3) return null;
+  const out = [];
+  for (let i = 0; i < QUESTIONS.length; i += 1) {
+    const item = value[i];
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const q = typeof item.q === 'string' ? item.q.trim() : '';
+    const a = typeof item.a === 'string' ? item.a.replace(/\u0000/g, '').trim() : '';
+    if (q !== QUESTIONS[i]) return null;
+    if (!a || a.length > MAX_ANSWER) return null;
+    out.push({ q: QUESTIONS[i], a: a });
+  }
+  return out;
+}
+
+function isDuplicate(status, data) {
+  if (status === 409) return true;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  if (data.duplicate === true || data.already === true || data.exists === true) return true;
+  const parts = ['status', 'error', 'message', 'code', 'reason']
+    .map((key) => (typeof data[key] === 'string' ? data[key] : ''))
+    .join(' ');
+  return DUPLICATE_RE.test(parts);
+}
+
+function shouldStoreAnswers(status, data) {
+  if (status >= 200 && status < 300 && data && data.ok !== false) return true;
+  return isDuplicate(status, data);
 }
 
 async function readJson(req) {
@@ -72,6 +136,38 @@ async function readJson(req) {
     return JSON.parse(body.toString('utf8'));
   }
   return body;
+}
+
+async function saveAnswers(req, email, payload) {
+  const answers = cleanAnswers(payload && payload.answers);
+  if (!answers) {
+    console.error('answers skipped');
+    return;
+  }
+
+  const headers = { 'content-type': 'application/json' };
+  const key = answersKey();
+  if (key) headers['x-onlyfash-key'] = key;
+
+  const body = {
+    email: email,
+    answers: answers,
+    source: 'onlyfash.com',
+  };
+  const country = countryFrom(req);
+  if (country) body.country = country;
+
+  try {
+    const saved = await fetch(ANSWERS_URL, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!saved.ok) console.error('answers save failed', saved.status);
+  } catch (err) {
+    console.error('answers save failed');
+  }
 }
 
 async function handler(req, res) {
@@ -149,6 +245,14 @@ async function handler(req, res) {
   }
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     data = { ok: false };
+  }
+
+  if (shouldStoreAnswers(upstream.status, data)) {
+    try {
+      await saveAnswers(req, email, payload);
+    } catch (err) {
+      console.error('answers save failed');
+    }
   }
 
   send(res, upstream.status, data);
